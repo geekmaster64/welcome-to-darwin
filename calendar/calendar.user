@@ -1,0 +1,10 @@
+/*
+ * Your dates. Each event is: DATE<TAB>description
+ *
+ * 05/12	Mom's birthday
+ * 12/25	Leave early
+ * Jul 4	Fireworks on the roof
+ * 2026/10/31	Ship the thing
+ *
+ * A leading tab continues the previous date.
+ */

@@ -1,0 +1,25 @@
+/*
+ * Darwin login calendar — read by calendar(1) at shell startup.
+ *
+ * Format: DATE<TAB>description
+ * Add personal dates in calendar.user (this directory).
+ *
+ * $ calendar -A 7
+ */
+
+LANG=C
+
+#include <calendar.usholiday>
+#include <calendar.computer>
+#include <calendar.mac>
+#include <calendar.user>
+
+/* extras the old US file omitted */
+01/MonThird	Martin Luther King Jr. Day
+06/19	Juneteenth
+09/17	Constitution Day / Citizenship Day
+09/19	Talk Like a Pirate Day
+
+/* computed by calendar(1) against local longitude */
+NewMoon	New Moon
+FullMoon	Full Moon

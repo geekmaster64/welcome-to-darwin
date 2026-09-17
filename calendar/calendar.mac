@@ -1,0 +1,56 @@
+/*
+ * Macintosh, NeXT, Darwin — days a Mac Unix person would notice.
+ */
+
+#ifndef _calendar_mac_
+#define _calendar_mac_
+
+01/07	Safari announced, 2003
+01/09	iPhone announced, 2007
+01/10	Intel Macs and the first MacBook Pro announced, 2006
+01/19	Apple Lisa unveiled, 1983
+01/22	Apple Macintosh 128K goes on sale, 1984
+01/24	Macintosh introduced, 1984
+02/24	Steve Jobs born, 1955
+03/21	Power Macintosh 6100/7100/8100, the first PowerPC Macs, 1994
+03/24	Mac OS X 10.0 Cheetah released, 2001
+04/01	Apple Computer founded in the garage, 1976
+04/03	iPad goes on sale, 2010
+04/24	Original 128K Macintosh discontinued, 1986
+05/06	iMac G3 introduced (Bondi Blue), 1998
+05/13	System 7 released, 1991
+05/19	OS X 10.0.0 Darwin userland / Cheetah GM week, 2001
+06/05	WWDC: Apple announces the Intel switch, 2005
+06/06	Steve Jobs' WWDC keynote returns, 1997
+06/10	First Apple II shipped, 1977
+06/11	Retina MacBook Pro introduced, 2012
+06/15	Apple II Plus introduced, 1979
+07/11	App Store launched, 2008
+08/11	Steve Wozniak born, 1950
+08/15	Apple I sold to the Homebrew Computer Club, 1976
+08/24	Mac OS X 10.0.4 released, 2001
+09/13	Mac OS X Public Beta ("Kodiak") released, 2000
+09/16	Steve Jobs named interim CEO of Apple, 1997
+09/17	Steve Jobs resigns from Apple, 1985
+10/05	Steve Jobs died, 2011
+10/12	NeXT Computer unveiled at Davies Symphony Hall, 1988
+10/16	Mac OS X 10.10 Yosemite, 2014
+10/20	Mac OS X 10.3 Panther, 2003
+10/23	iPod introduced, 2001
+10/24	Xcode 1.0 with Panther, 2003
+10/25	DEC VAX-11/780 announced, 1977 (the machine BSD grew up on)
+10/26	Mac OS X 10.5 Leopard, 2007
+11/10	Apple M1 announced — the ARM Mac era, 2020
+11/12	macOS Big Sur 11.0, 2020
+12/12	Apple IPO, 1980
+12/20	Apple announces acquisition of NeXT, 1996
+12/21	NeXTSTEP 0.8 / the cube ships to developers, 1988
+
+/* Darwin / BSD lineage */
+01/01	Unix Epoch, 1970
+04/20	Darwin 1.0 / Mac OS X DP4 era, 2000
+09/09	First actual computer bug (moth in the Harvard Mark II), 1947
+10/15	Unix First Edition (Research Unix V1) roughly dated, 1971
+12/09	Dennis Ritchie died, 2011
+
+#endif /* !_calendar_mac_ */

@@ -1,0 +1,299 @@
+#!/bin/zsh
+# login-motd — old-school Darwin login banner
+# fortune(1) + calendar(1) + hostinfo, plus local/public IP.
+#
+# Skip: ~/.hushlogin  MOTD=0  non-tty  TERM=dumb
+# Run anytime:  login-motd
+
+emulate -L zsh
+setopt extendedglob
+setopt no_unset
+
+[[ -f ${HOME}/.hushlogin ]] && exit 0
+[[ ${MOTD:-1} == 0 ]] && exit 0
+
+if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+  print -r -- "login-motd — Darwin login banner (fortune, calendar, IPs)"
+  print -r -- "  MOTD=0            disable from .zshrc"
+  print -r -- "  ~/.hushlogin      classic Unix mute"
+  print -r -- "  ~/.calendar/calendar.user   your dates (TAB after the date)"
+  exit 0
+fi
+
+# Manual runs should always print. Auto-run from .zshrc only on a real tty.
+if [[ -z ${LOGIN_MOTD_FORCE:-} && ! -t 1 ]]; then
+  exit 0
+fi
+if [[ -z ${LOGIN_MOTD_FORCE:-} && ( -z ${TERM:-} || ${TERM} == dumb || ${TERM} == unknown ) ]]; then
+  exit 0
+fi
+
+typeset -i COLOR=0 UTF8=0
+typeset -i WIDTH=78
+typeset -i COLPAD=24
+
+if [[ -n ${TERM:-} && ${TERM} != dumb ]]; then
+  local ncolors
+  ncolors=$(tput colors 2>/dev/null) || ncolors=0
+  (( ncolors >= 8 )) && COLOR=1
+fi
+if [[ ! -t 1 && -z ${LOGIN_MOTD_FORCE:-} ]]; then
+  COLOR=0
+fi
+
+if [[ ${LANG:-} == *UTF-8* || ${LC_ALL:-} == *UTF-8* || ${LC_CTYPE:-} == *UTF-8* ]]; then
+  UTF8=1
+fi
+
+if [[ ${COLUMNS:-0} -gt 0 ]]; then
+  WIDTH=${COLUMNS}
+fi
+(( WIDTH > 78 )) && WIDTH=78
+(( WIDTH < 56 )) && WIDTH=56
+
+if (( COLOR )); then
+  RST=$'\033[0m'
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  ITAL=$'\033[3m'
+  REV=$'\033[7m'
+  UNREV=$'\033[27m'
+  GOLD=$'\033[38;5;178m'
+  SKY=$'\033[38;5;74m'
+  FG=$'\033[38;5;252m'
+  MUTED=$'\033[38;5;245m'
+else
+  RST= BOLD= DIM= ITAL= REV= UNREV= GOLD= SKY= FG= MUTED=
+fi
+
+strip_ansi() {
+  print -r -- "$1" | perl -pe 's/\e\[[0-9;]*m//g'
+}
+
+rule() {
+  local ch='-' i
+  (( UTF8 )) && ch='─'
+  print -n -- "$MUTED"
+  for (( i = 0; i < WIDTH; i++ )); do
+    print -n -- "$ch"
+  done
+  print -r -- "$RST"
+}
+
+# --- quote of the day (stable for the calendar day) ----------------------
+fortune_file=${HOME}/.local/share/login-motd/fortunes
+typeset fortune_body='' fortune_attr=''
+if [[ -r $fortune_file ]]; then
+  local seed fortune
+  seed=$(date +%Y%j)
+  fortune=$(awk -v seed="$seed" '
+    BEGIN { RS="%"; srand(seed + 0) }
+    {
+      gsub(/^[ \t\n]+|[ \t\n]+$/, "")
+      if (length($0)) { n++; f[n] = $0 }
+    }
+    END { if (n) print f[int(rand() * n) + 1] }
+  ' "$fortune_file")
+  if [[ $fortune == *$'\n'* ]]; then
+    fortune_attr=${fortune##*$'\n'}
+    fortune_body=${fortune%$'\n'*}
+    fortune_attr=${fortune_attr##[$' \t']#}
+    fortune_attr=${fortune_attr#-- }
+    fortune_attr=${fortune_attr#--}
+  else
+    fortune_body=$fortune
+  fi
+fi
+
+# --- calendar + cal ------------------------------------------------------
+typeset -a cal_lines event_lines
+local cal_raw today
+today=$(date +%e)
+cal_raw=$(cal)
+if (( COLOR )); then
+  cal_raw=$(print -r -- "$cal_raw" | TODAY_DAY="$today" perl -pe '
+    if ($. > 2) {
+      my $d = $ENV{TODAY_DAY};
+      s/(?<!\d)\Q$d\E(?!\d)/\033[7m$d\033[27m/;
+    }
+  ')
+fi
+cal_lines=("${(@f)cal_raw}")
+# drop trailing blank lines
+while (( ${#cal_lines} )) && [[ -z ${cal_lines[-1]// } ]]; do
+  cal_lines[-1]=()
+done
+
+local ev
+ev=$(calendar -A 7 2>/dev/null) || ev=""
+ev=$(print -r -- "$ev" | sed 's/\*/ /g; s/  */ /g; s/ *$//')
+if [[ -n $ev ]]; then
+  event_lines=("${(@f)ev}")
+else
+  event_lines=("Nothing on the calendar.")
+fi
+
+# --- network -------------------------------------------------------------
+local iface local_ip public_ip public_note=''
+iface=$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')
+if [[ -n $iface ]]; then
+  local_ip=$(ipconfig getifaddr "$iface" 2>/dev/null) || local_ip=""
+fi
+if [[ -z ${local_ip:-} ]]; then
+  local_ip=$(ifconfig 2>/dev/null | awk '/inet / && $2 != "127.0.0.1" {print $2; exit}')
+fi
+[[ -z ${local_ip:-} ]] && local_ip='—'
+[[ -z ${iface:-} ]] && iface='—'
+
+typeset cache=${HOME}/.cache/login-motd/public-ip
+mkdir -p "${HOME}/.cache/login-motd" 2>/dev/null || true
+local now ts cached_ip
+now=$(date +%s)
+cached_ip=""
+ts=0
+if [[ -r $cache ]]; then
+  ts=$(sed -n '1p' "$cache" 2>/dev/null)
+  cached_ip=$(sed -n '2p' "$cache" 2>/dev/null)
+  [[ $ts == <-> ]] || ts=0
+fi
+if [[ -n $cached_ip && $(( now - ts )) -lt 1800 ]]; then
+  public_ip=$cached_ip
+else
+  public_ip=$(curl -4 -fsS --max-time 1.2 --connect-timeout 1 https://api.ipify.org 2>/dev/null) \
+    || public_ip=$(curl -4 -fsS --max-time 1.2 --connect-timeout 1 https://ifconfig.me/ip 2>/dev/null) \
+    || public_ip=""
+  if [[ $public_ip == [0-9]##.[0-9]##.[0-9]##.[0-9]## ]]; then
+    printf '%s\n%s\n' "$now" "$public_ip" >| "$cache"
+  elif [[ -n $cached_ip ]]; then
+    public_ip=$cached_ip
+    public_note=' (cached)'
+  else
+    public_ip='offline'
+  fi
+fi
+
+# --- machine -------------------------------------------------------------
+local computer macos darwin cpu mem_gb up load disk batt_line
+computer=$(scutil --get ComputerName 2>/dev/null) || computer=$(hostname -s)
+macos=$(sw_vers -productVersion 2>/dev/null)
+darwin=$(uname -r)
+cpu=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
+mem_gb=$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1024 / 1024 / 1024 ))
+up=$(uptime | sed -E 's/^.* up  *//; s/, *[0-9]+ user.*//; s/  +/ /g')
+load=$(sysctl -n vm.loadavg 2>/dev/null | tr -d '{}')
+load=${load## }
+disk=$(df -h "$HOME" 2>/dev/null | awk 'NR==2 { printf "%s of %s (%s)", $3, $2, $5 }')
+
+local batt_src batt_pct batt_state batt_eta=''
+batt_line=$(pmset -g batt 2>/dev/null) || batt_line=""
+if [[ -n $batt_line ]]; then
+  if [[ $batt_line == *"AC Power"* ]]; then
+    batt_src="AC"
+  else
+    batt_src="battery"
+  fi
+  batt_pct=$(print -r -- "$batt_line" | perl -ne 'print $1 if /(\d+)%/')
+  if [[ $batt_line == *charging* && $batt_line != *discharging* ]]; then
+    batt_state="charging"
+  elif [[ $batt_line == *discharging* ]]; then
+    batt_state="discharging"
+  elif [[ $batt_line == *charged* ]]; then
+    batt_state="charged"
+  else
+    batt_state=""
+  fi
+  batt_eta=$(print -r -- "$batt_line" | sed -nE 's/.* ([0-9]+:[0-9]+) remaining.*/\1/p')
+fi
+
+local last_login=''
+last_login=$(last -2 "$USER" 2>/dev/null | awk 'NR==2 { print $3, $4, $5, $6 }')
+[[ $last_login == "still logged"* ]] && last_login=""
+
+local mail_msg=''
+[[ -s /var/mail/${USER} ]] && mail_msg="You have mail."
+
+# --- print ---------------------------------------------------------------
+print
+rule
+print -r -- "  ${BOLD}${FG}Welcome to Darwin.${RST}"
+print -r -- "  ${BOLD}${computer}${RST}"
+print -n -- "  ${MUTED}macOS ${macos}  ·  Darwin ${darwin}"
+[[ -n $cpu ]] && print -n -- "  ·  ${cpu}"
+(( mem_gb > 0 )) && print -n -- "  ·  ${mem_gb} GB"
+print -r -- "${RST}"
+print -r -- "  ${MUTED}$(date '+%A, %B %-d, %Y  %H:%M')${RST}"
+rule
+
+if [[ -n $fortune_body ]]; then
+  print
+  local wrapped line
+  wrapped=$(print -r -- "$fortune_body" | fold -s -w $(( WIDTH - 6 )))
+  while IFS= read -r line; do
+    print -r -- "  ${ITAL}${GOLD}${line}${RST}"
+  done <<< "$wrapped"
+  if [[ -n $fortune_attr ]]; then
+    print -r -- "      ${DIM}-- ${fortune_attr}${RST}"
+  fi
+  print
+fi
+
+# calendar block: cal on the left, coming-up on the right
+local i max=0
+local -a right
+right=("Coming up")
+right+=("${event_lines[@]}")
+(( ${#cal_lines} > ${#right} )) && max=${#cal_lines} || max=${#right}
+
+local left vis pad extra col max_ev
+max_ev=$(( WIDTH - 2 - COLPAD ))
+(( max_ev < 24 )) && max_ev=24
+for (( i=1; i<=max; i++ )); do
+  left=${cal_lines[i]:-}
+  extra=${right[i]:-}
+  if (( ${#extra} > max_ev )); then
+    extra="${extra[1,$((max_ev - 1))]}…"
+  fi
+  vis=$(strip_ansi "$left")
+  pad=$(( COLPAD - ${#vis} ))
+  (( pad < 2 )) && pad=2
+  if (( i == 1 )); then
+    col=$MUTED
+  else
+    col=$SKY
+  fi
+  if [[ -n $left || -n $extra ]]; then
+    printf '  %s%*s%s%s%s\n' "$left" $pad '' "$col" "$extra" "$RST"
+  fi
+done
+
+pair() {
+  local l1="$1" v1="$2" l2="$3" v2="$4"
+  local left right vis pad
+  left="${MUTED}${(r:7:)l1}${RST}${FG}${v1}${RST}"
+  right="${MUTED}${(r:7:)l2}${RST}${FG}${v2}${RST}"
+  vis=$(strip_ansi "$left")
+  pad=$(( 40 - ${#vis} ))
+  (( pad < 2 )) && pad=2
+  printf '  %s%*s%s\n' "$left" $pad '' "$right"
+}
+
+local power_txt='—'
+if [[ -n ${batt_pct:-} ]]; then
+  power_txt="${batt_pct}% ${batt_src}"
+  [[ $batt_state == charging ]] && power_txt+=" charging"
+  [[ -n $batt_eta ]] && power_txt+="  ${batt_eta} left"
+fi
+
+print
+rule
+pair net "${iface}  ${local_ip}" public "${public_ip}${public_note}"
+pair power "$power_txt" disk "$disk"
+pair up "$up" load "$load"
+if [[ -n $last_login ]]; then
+  print -r -- "  ${MUTED}last   ${RST}${FG}${last_login}${RST}"
+fi
+if [[ -n $mail_msg ]]; then
+  print -r -- "  ${GOLD}${mail_msg}${RST}"
+fi
+rule
+print
