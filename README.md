@@ -17,13 +17,14 @@ No Homebrew. No Python. Stock Darwin tools (`cal`, `calendar`, `scutil`, `pmset`
   Byte my shiny metal disk.
       -- a PowerBook, probably
 
-     September 2026       Coming up
-  Su Mo Tu We Th Fr Sa    Sep 17 Steve Jobs resigns from Apple, 1985
-         1  2  3  4  5    Sep 17 Constitution Day / Citizenship Day
-   6  7  8  9 10 11 12    Sep 19 Talk Like a Pirate Day
-  13 14 15 16[17]18 19    Sep 20 Harlan Herrick runs first FORTRAN program, …
-  20 21 22 23 24 25 26    Sep 22 Autumnal Equinox
-  27 28 29 30             Sep 26 Full Moon (11:43:20)
+     September 2026       Today
+  Su Mo Tu We Th Fr Sa    Sep 17     Steve Jobs resigns from Apple, 1985
+         1  2  3  4  5    Sep 17     Constitution Day / Citizenship Day
+   6  7  8  9 10 11 12    Coming up
+  13 14 15 16[17]18 19    Sep 19     Talk Like a Pirate Day
+  20 21 22 23 24 25 26    Sep 20     Harlan Herrick runs first FORTRAN program, …
+  27 28 29 30             Sep 22     Autumnal Equinox
+                          Sep 26     Full Moon (11:43:20)
 
 ──────────────────────────────────────────────────────────────────────────────
   net    en0  10.0.0.12                   public 203.0.113.4

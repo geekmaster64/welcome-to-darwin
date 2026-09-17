@@ -124,12 +124,40 @@ while (( ${#cal_lines} )) && [[ -z ${cal_lines[-1]// } ]]; do
   cal_lines[-1]=()
 done
 
-local ev
+local ev today_key
+typeset -a today_events soon_events
+today_key=$(LANG=C date '+%b %e' | awk '{$1=$1; print}')
 ev=$(calendar -A 7 2>/dev/null) || ev=""
 ev=$(print -r -- "$ev" | sed 's/\*/ /g; s/  */ /g; s/ *$//')
 if [[ -n $ev ]]; then
-  event_lines=("${(@f)ev}")
-else
+  local eline emon erest eday edesc
+  for eline in "${(@f)ev}"; do
+    emon=${eline%% *}
+    erest=${eline#* }
+    eday=${erest%% *}
+    edesc=${erest#* }
+    if [[ $eday == <-> ]]; then
+      eline=$(printf '%-6s     %s' "$emon $eday" "$edesc")
+      if [[ "$emon $eday" == "$today_key" ]]; then
+        today_events+=("$eline")
+      else
+        soon_events+=("$eline")
+      fi
+    else
+      soon_events+=("$eline")
+    fi
+  done
+fi
+event_lines=()
+if (( ${#today_events} )); then
+  event_lines+=("Today")
+  event_lines+=("${today_events[@]}")
+fi
+if (( ${#soon_events} )); then
+  event_lines+=("Coming up")
+  event_lines+=("${soon_events[@]}")
+fi
+if (( ${#event_lines} == 0 )); then
   event_lines=("Nothing on the calendar.")
 fi
 
@@ -237,11 +265,10 @@ if [[ -n $fortune_body ]]; then
   print
 fi
 
-# calendar block: cal on the left, coming-up on the right
+# calendar block: cal on the left, today / coming-up on the right
 local i max=0
 local -a right
-right=("Coming up")
-right+=("${event_lines[@]}")
+right=("${event_lines[@]}")
 (( ${#cal_lines} > ${#right} )) && max=${#cal_lines} || max=${#right}
 
 local left vis pad extra col max_ev
@@ -250,13 +277,15 @@ max_ev=$(( WIDTH - 2 - COLPAD ))
 for (( i=1; i<=max; i++ )); do
   left=${cal_lines[i]:-}
   extra=${right[i]:-}
-  if (( ${#extra} > max_ev )); then
+  if [[ $extra != "Today" && $extra != "Coming up" && $extra != "Nothing on the calendar." && ${#extra} -gt max_ev ]]; then
     extra="${extra[1,$((max_ev - 1))]}…"
   fi
   vis=$(strip_ansi "$left")
   pad=$(( COLPAD - ${#vis} ))
   (( pad < 2 )) && pad=2
-  if (( i == 1 )); then
+  if [[ $extra == "Today" ]]; then
+    col="${BOLD}${GOLD}"
+  elif [[ $extra == "Coming up" || $extra == "Nothing on the calendar." ]]; then
     col=$MUTED
   else
     col=$SKY
